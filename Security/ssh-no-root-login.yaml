@@ -1,0 +1,80 @@
+---
+- name: Ensure SSH configuration `PermitRootLogin` is set to `no`
+  hosts: all
+  become: true
+
+  vars:
+    ssh_dir: "/etc/ssh"
+    pattern: "(PermitRootLogin .+)"
+
+  tasks:
+    - name: Target file list
+      ansible.builtin.find:
+        paths: "{{ ssh_dir }}"
+        file_type: file
+        recurse: true
+      register: whole_file_list
+
+    - name: Filter files
+      ansible.builtin.set_fact:
+        file_list: >-
+          {{
+            whole_file_list.files
+            | map(attribute='path')
+            | select("search", "sshd_config")
+            | reject("search", ".bak")
+            | reject("search", "_key")
+            | list
+          }}
+
+    - name: Find files that `PermitRootLogin` option is enabled
+      ansible.builtin.shell:
+        cmd: grep -E "^{{ pattern }}$" "{{ item }}"
+      loop: "{{ file_list }}"
+      register: file_list
+      failed_when: false
+      changed_when: false
+
+    - name: Filter files
+      ansible.builtin.set_fact:
+        file_list: "{{ file_list.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | list }}"
+
+    - name: Disable if enabled `PermitRootLogin` exist
+      ansible.builtin.replace:
+        path: "{{ item }}"
+        regexp: "^{{ pattern }}$"
+        replace: '# \1'
+      loop: "{{ file_list }}"
+
+    - name: Backup `sshd_config` file
+      ansible.builtin.copy:
+        src: "{{ ssh_dir }}/sshd_config"
+        dest: "{{ ssh_dir }}/sshd_config.bak.{{ ansible_date_time.date }}"
+        remote_src: true
+
+    - name: Set `PermitRootLogin no`
+      ansible.builtin.lineinfile:
+        path: "{{ ssh_dir }}/sshd_config"
+        regexp: '#\s?{{ pattern }}$'
+        insertafter: "EOF"
+        line: "PermitRootLogin no"
+
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+
+    - name: Verification
+      block:
+        - name: Count enabled `PermitRootLogin` lines
+          ansible.builtin.shell:
+            cmd: "grep -E '^PermitRootLogin no$' {{ ssh_dir }}/sshd_config | wc -l"
+          register: count_enabled
+          changed_when: false
+
+        - name: Assert
+          ansible.builtin.assert:
+            that:
+              - count_enabled.rc == 0
+              - count_enabled.stdout == "1"
+            quiet: true

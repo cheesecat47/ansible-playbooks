@@ -59,7 +59,18 @@
         insertafter: "EOF"
         line: "PermitRootLogin no"
 
-    - name: Restart sshd
+    - name: Count non-root user
+      ansible.builtin.command:
+        cmd: "awk -F: '$3 >= 1000 && $3 < 60000 {print $1}' /etc/passwd"
+      register: count_nonroot_user
+      changed_when: false
+
+    - name: Ensure non-root user exists
+      ansible.builtin.fail:
+        msg: "No non-root users exist on the system! `sshd` restart aborted to prevent lockout."
+      when: count_nonroot_user.stdout_lines | length < 1
+
+    - name: Restart `sshd`
       ansible.builtin.service:
         name: sshd
         state: restarted

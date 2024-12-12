@@ -23,7 +23,6 @@
             | map(attribute='path')
             | select("search", "sshd_config")
             | reject("search", ".bak")
-            | reject("search", "_key")
             | list
           }}
 

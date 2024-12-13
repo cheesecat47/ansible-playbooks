@@ -38,18 +38,18 @@
       ansible.builtin.set_fact:
         file_list: "{{ file_list.results | selectattr('rc', 'equalto', 0) | map(attribute='item') | list }}"
 
+    - name: Backup `sshd_config` file
+      ansible.builtin.copy:
+        src: "{{ ssh_dir }}/sshd_config"
+        dest: "{{ ssh_dir }}/sshd_config.bak.{{ ansible_date_time.date }}"
+        remote_src: true
+
     - name: Disable if enabled `PermitRootLogin` exist
       ansible.builtin.replace:
         path: "{{ item }}"
         regexp: "^{{ pattern }}$"
         replace: '# \1'
       loop: "{{ file_list }}"
-
-    - name: Backup `sshd_config` file
-      ansible.builtin.copy:
-        src: "{{ ssh_dir }}/sshd_config"
-        dest: "{{ ssh_dir }}/sshd_config.bak.{{ ansible_date_time.date }}"
-        remote_src: true
 
     - name: Set `PermitRootLogin no`
       ansible.builtin.lineinfile:

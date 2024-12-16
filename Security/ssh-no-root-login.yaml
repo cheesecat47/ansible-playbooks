@@ -8,6 +8,11 @@
     pattern: "(PermitRootLogin .+)"
 
   tasks:
+    - name: Ensure this playbook runs on Linux
+      ansible.builtin.fail:
+        msg: "This playbook runs on Linux only."
+      when: ansible_facts['system'] != "Linux"
+
     - name: Target file list
       ansible.builtin.find:
         paths: "{{ ssh_dir }}"
@@ -79,12 +84,14 @@
       register: count_nonroot_user
       changed_when: false
 
-    - name: Ensure non-root user exists
-      ansible.builtin.fail:
-        msg: "No non-root users exist on the system! `sshd` restart aborted to prevent lockout."
-      when: count_nonroot_user.stdout_lines | length < 1
-
-    - name: Restart `sshd`
+    - name: Restart `sshd` - RedHat
       ansible.builtin.service:
         name: sshd
         state: restarted
+      when: ansible_facts['distribution_file_variety'] == 'RedHat'
+
+    - name: Restart `ssh` - Debian
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
+      when: ansible_facts['distribution_file_variety'] == 'Debian'

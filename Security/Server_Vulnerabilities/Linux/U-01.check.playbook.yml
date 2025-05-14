@@ -1,0 +1,81 @@
+# U-01 (상) 1. 계정관리 > 1.1 root 계정 원격접속 제한
+#
+# 양호: 원격 터미널 서비스를 사용하지 않거나, 사용 시 root 직접 접속을 차단한 경우
+# 취약: 원격 터미널 서비스 사용 시 root 직접 접속을 허용한 경우
+---
+- name: U-01 root 계정 원격접속 제한 점검
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Linux인지 확인
+      ansible.builtin.fail:
+        msg: "OS: {{ ansible_facts['system'] }}"
+      when: ansible_facts['system'] != "Linux"
+
+    - name: 서비스 정보 수집
+      ansible.builtin.service_facts:
+
+    - name: Telnet 포트 확인
+      ansible.builtin.shell:
+        cmd: "netstat -an | grep ':23'"
+      register: telnet_port
+      changed_when: false
+      ignore_errors: true
+
+    - name: Telnet 사용 중인 경우
+      when: telnet_port.rc == 0
+      block:
+        - name: Telnet 설정 파일 확인 (1)
+          ansible.builtin.shell:
+            cmd: "cat /etc/pam.d/login | grep pam_securetty.so"
+          register: telnet_file_1
+          changed_when: false
+
+        - name: Telnet 설정 파일 확인 (2)
+          ansible.builtin.shell:
+            cmd: "cat /etc/securetty | grep pts | wc -l"
+          register: telnet_file_2
+          changed_when: false
+
+    - name: Telnet 점검 결과
+      ansible.builtin.set_fact:
+        telnet_safe: >-
+          {{ (telnet_port.rc != 0) or (
+            (
+              telnet_port.rc == 0
+            ) and (
+              telnet_file_1.stdout | regex_replace('[\t ]+', ' ') | trim == 'auth required pam_securetty.so'
+            ) and (
+              telnet_file_2.stdout | int == 0
+            )
+          ) }}
+
+    - name: SSH 서비스 확인
+      ansible.builtin.set_fact:
+        ssh_in_use: "{{ ansible_facts['services']['sshd.service']['state'] }}"
+
+    - name: SSH 사용 중인 경우
+      when: ssh_in_use == "running"
+      block:
+        - name: SSH 설정 파일 확인
+          ansible.builtin.shell:
+            cmd: "cat /etc/ssh/sshd_config | grep '^PermitRootLogin no'"
+          register: ssh_file
+          changed_when: false
+          ignore_errors: true
+
+    - name: SSH 점검 결과
+      ansible.builtin.set_fact:
+        ssh_safe: >-
+          {{ (ssh_in_use != "running") or (
+            (
+              ssh_in_use == "running"
+            ) and(
+              ssh_file.rc | int == 0
+            )
+          ) }}
+
+    - name: 최종 점검 결과
+      ansible.builtin.debug:
+        msg: "{% if telnet_safe and ssh_safe %}양호{% else %}취약{% endif %}"

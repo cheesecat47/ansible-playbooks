@@ -1,0 +1,21 @@
+---
+- name: Check Windows Defender status on Windows Server
+  hosts: winsvr
+  gather_facts: false
+
+  tasks:
+    - name: Get Defender service status
+      ansible.windows.win_shell: |
+        (Get-Service -Name windefend).Status
+      register: defender_status
+      failed_when: false
+
+    - name: Show Defender service status
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          {% if defender_status.stderr != "" %}
+          Not Installed
+          {% else %}
+          {{ defender_status.stdout | trim }}
+          {% endif %}

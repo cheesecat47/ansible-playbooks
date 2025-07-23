@@ -1,0 +1,40 @@
+---
+- name: Check Firewalld Status
+  hosts: linux
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Check if firewalld is installed
+      ansible.builtin.command: rpm -q firewalld
+      register: firewalld_installed
+      changed_when: false
+      ignore_errors: true
+
+    - name: Stop if firewalld is not installed
+      ansible.builtin.fail:
+        msg: "firewalld is NOT installed. Skip this host."
+      when: firewalld_installed.rc != 0
+
+    - name: Display firewalld version
+      ansible.builtin.debug:
+        msg: "{{ firewalld_installed.stdout }}"
+
+    - name: Check if firewalld is running
+      ansible.builtin.systemd:
+        name: firewalld
+      register: firewalld_status
+
+    - name: Stop play if firewalld is not active
+      ansible.builtin.fail:
+        msg: "firewalld is NOT running. Skip this host."
+      when: firewalld_status.status.ActiveState != "active"
+
+    - name: Get current active firewall rules
+      ansible.builtin.command: firewall-cmd --list-all-zones
+      register: firewall_rules
+      changed_when: false
+
+    - name: Display current firewall rules
+      ansible.builtin.debug:
+        msg: "{{ firewall_rules.stdout }}"

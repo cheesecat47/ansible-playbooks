@@ -1,0 +1,16 @@
+---
+- name: Backup firewalld config file
+  hosts: linux
+  become: true
+  gather_facts: false
+
+  vars:
+    _zone: "{{ zone | default('public') }}"
+    _today: "{{ today | default(lookup('pipe', 'date +%Y%m%d')) }}"
+
+  tasks:
+    - name: Backup the original XML file
+      ansible.builtin.copy:
+        src: /etc/firewalld/zones/{{ _zone }}.xml
+        dest: "/etc/firewalld/zones/{{ _zone }}.xml.bak.{{ _today }}"
+        remote_src: true

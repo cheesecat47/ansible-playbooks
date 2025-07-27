@@ -1,0 +1,23 @@
+---
+- name: Restore firewalld from backup file
+  hosts: linux
+  become: true
+  gather_facts: false
+
+  vars:
+    _zone: "{{ zone | default('public') }}"
+    _today: "{{ today | default(lookup('pipe', 'date +%Y%m%d')) }}"
+
+  tasks:
+    - name: Restore from backup file
+      ansible.builtin.copy:
+        src: "/etc/firewalld/zones/{{ _zone }}.xml.bak.{{ _today }}"
+        dest: /etc/firewalld/zones/{{ _zone }}.xml
+        remote_src: true
+      notify: Restart firewalld
+
+  handlers:
+    - name: Restart firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: reloaded

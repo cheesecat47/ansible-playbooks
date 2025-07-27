@@ -91,6 +91,19 @@ changed: [rocky8.10]
 - rocky9.6 호스트는 private 존에 3306/tcp 포트에 대한 규칙은 추가가 되었으나, 5432번 포트에 대한 룰을 잘못 정의하여 재시작하지 않았습니다.
   - private.xml에는 3306/tcp 규칙이 추가된 상태이므로, 이 상태에서 서버에 접속해 `systemctl restart firewalld` 명령을 실행하면 private 존에서 3306/tcp 규칙은 활성화될 것입니다.
 
+### 04.restore_firewalld.playbook.yml
+
+- `/etc/firewalld/zones` 경로에 백업 파일이 있는 경우에 한해 해당 상태로 원복합니다.
+
+```shell
+> ansible-playbook -i inventory.yml 04.restore_firewalld.playbook.yml -k # -e "today=20250723 zone=private"
+# ...
+TASK [Restore from backup file] ***************************************************************************************************
+fatal: [centos7.5]: FAILED! => {"changed": false, "msg": "Source /etc/firewalld/zones/private.xml.bak.20250723 not found"}
+changed: [rocky9.6]
+# ...
+```
+
 ## Tested on
 - CentOS 7.0
 - CentOS 7.5

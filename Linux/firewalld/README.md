@@ -61,6 +61,36 @@ changed: [rocky9.6]
 - 위 예시에서 centos7.9 호스트는 `private`존에 규칙을 추가한 적이 없기 때문에 `private.xml` 파일도 생성되지 않았기 때문에 `failed`가 되었습니다.
 - xml 파일이 존재하는 경우 `changed`로 표시됩니다.
 
+### 03.open_port.playbook.yml
+
+- `host_vars` 디렉토리에 host 이름과 동일한 yml 파일을 생성하고, 방화벽에서 허용할 port, protocol, zone을 지정합니다.
+- `host_vars`에 파일이 없는 host에 대해서는 방화벽 규칙 추가를 실행하지 않습니다.
+- zone은 미지정 시 기본값으로 `public`으로 입력되나, port, protocol 정보는 필수적으로 입력해야 합니다.
+  - 만약 이 둘 중 하나 이상의 값이 지정되지 않으면 해당 host에 대해서는 firewalld 서비스 재시작을 skip합니다.
+
+```shell
+> ansible-playbook -i inventory.yml 03.open_port.playbook.yml -k 
+# ...
+TASK [Open firewalld ports] ******************************************************************************************************************
+skipping: [centos7.5]
+skipping: [centos7.9]
+changed: [centos7.0] => (item={'port': 22, 'protocol': 'tcp'})
+ok: [rocky9.6] => (item={'port': 3306, 'protocol': 'tcp', 'zone': 'private'})
+skipping: [rocky9.6] => (item={'port': 5432}) 
+changed: [rocky8.10] => (item={'port': 20021, 'protocol': 'tcp'})
+changed: [rocky8.10] => (item={'port': '20022-20029', 'protocol': 'tcp'})
+
+RUNNING HANDLER [Restart firewalld] **********************************************************************************************************
+changed: [centos7.0]
+changed: [rocky8.10]
+# ...
+```
+
+#### Output Details
+- `host_vars`에 파일이 없는 centos7.5, centos7.9 호스트에 대해서는 task를 실행하지 않습니다.
+- rocky9.6 호스트는 private 존에 3306/tcp 포트에 대한 규칙은 추가가 되었으나, 5432번 포트에 대한 룰을 잘못 정의하여 재시작하지 않았습니다.
+  - private.xml에는 3306/tcp 규칙이 추가된 상태이므로, 이 상태에서 서버에 접속해 `systemctl restart firewalld` 명령을 실행하면 private 존에서 3306/tcp 규칙은 활성화될 것입니다.
+
 ## Tested on
 - CentOS 7.0
 - CentOS 7.5

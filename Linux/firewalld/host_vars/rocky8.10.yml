@@ -1,0 +1,3 @@
+firewall_ports:
+  - { port: 20021, protocol: "tcp" }
+  - { port: 20022-20029, protocol: "tcp" }

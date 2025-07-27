@@ -1,0 +1,35 @@
+---
+- name: Add port rule to firewalld
+  hosts: linux
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Check if firewalld is running
+      ansible.builtin.systemd:
+        name: firewalld
+      register: firewalld_status
+
+    - name: Stop play if firewalld is not active
+      ansible.builtin.fail:
+        msg: "firewalld is NOT running. Skip this host."
+      when: firewalld_status.status.ActiveState != "active"
+
+    - name: Open firewalld ports
+      ansible.posix.firewalld:
+        zone: "{{ item.zone | default('public') }}"
+        port: "{{ item.port }}/{{ item.protocol }}"
+        permanent: true
+        state: enabled
+      loop: "{{ firewall_ports }}"
+      notify: Restart firewalld
+      when:
+        - firewall_ports is defined
+        - item.port is defined
+        - item.protocol is defined
+
+  handlers:
+    - name: Restart firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: reloaded

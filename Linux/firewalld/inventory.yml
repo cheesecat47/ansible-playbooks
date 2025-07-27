@@ -1,0 +1,28 @@
+linux:
+  hosts:
+    centos7.0:
+      ansible_host: 192.168.0.11
+    centos7.5:
+      ansible_host: 192.168.0.12
+    centos7.9:
+      ansible_host: 192.168.0.13
+    rocky8.10:
+      ansible_host: 192.168.0.14
+    rocky9.6:
+      ansible_host: 192.168.0.15
+
+centos:
+  hosts:
+    centos7.0:
+    centos7.5:
+    centos7.9:
+  vars:
+    ansible_user: root
+    ansible_python_interpreter: /usr/bin/python2
+
+rocky:
+  hosts:
+    rocky8.10:
+    rocky9.6:
+  vars:
+    ansible_user: root

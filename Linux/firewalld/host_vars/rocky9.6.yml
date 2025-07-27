@@ -1,0 +1,3 @@
+firewall_ports:
+  - { port: 3306, protocol: "tcp", zone: "private" }
+  - { port: 5432 }

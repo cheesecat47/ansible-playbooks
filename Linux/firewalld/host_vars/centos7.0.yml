@@ -1,0 +1,2 @@
+firewall_ports:
+  - { port: 22, protocol: "tcp" }
